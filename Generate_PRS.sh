@@ -100,7 +100,7 @@ current output tag: $output_tag_current
 
 	#Create .profile file
 	plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out $PRS_stem > /dev/null
-	printf "$( grep "valid predictors" ${genotypes_new}.log | grep -o -E '[0-9]+' | head -n1 ) variants loaded for inclusion in the scores."
+	printf "$( grep "valid predictors" ${PRS_stem}.log | grep -o -E '[0-9]+' | head -n1 ) variants loaded for inclusion in the scores."
     fi
 
 #Clean-up
