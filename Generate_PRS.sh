@@ -10,12 +10,13 @@ set -e
 ############################# Verify inputs ############################
 
 #parse arguments
-while getopts 'i:s:f:o:p:r:w:h' flag; do
+while getopts 'i:s:f:t:o:p:r:w:h' flag; do
   case "${flag}" in
     i) genotypes="${OPTARG}" ;;
     s) sumstats="${OPTARG}" ;;
     f) output_folder="${OPTARG}" ;;
-    o) output_tag="${OPTARG}" ;;
+    t) output_tags="${OPTARG}" ;;
+    o) output="${OPTARG}" ;;
     p) pvalues="${OPTARG}" ;;
     r) r2thresh="${OPTARG}" ;;
     w) window="${OPTARG}" ;;
@@ -33,7 +34,8 @@ done
 printf "Input genotypes: $genotypes
 Summary statistics: $sumstats
 Output folder: $output_folder
-Output tag: $output_tag
+PRS output labels: $output_tags
+Output stem: $output
 P-value thresholds: $pvalues
 R-squared threshold: $r2thresh
 Window size: $window
@@ -44,7 +46,7 @@ genotypes_stem=${genotypes##*/}
 
 #split summary stats and output tags into arrays for easy parsing
 IFS=',' read -r -a sumstats_array <<< "$sumstats"
-IFS=',' read -r -a output_tag_array <<< "$output_tag"
+IFS=',' read -r -a output_tag_array <<< "$output_tags"
 
 ############################# Start actually doing things ############################
 
@@ -53,28 +55,33 @@ do
 sumstats_current=${sumstats_array[i]}
 output_tag_current=${output_tag_array[i]}
 
-printf "\ncurrent summary stats: $sumstats_current
+    printf "Step 1: Determining overlapping variants between genotypes and $output_tag_current summary stats\n\n"
+
+    printf "current summary stats: $sumstats_current
 current output tag: $output_tag_current
 "
-
     #get overlapping, non-palindromic variants
-    Rscript Determine_overlapping_SNPs.R $sumstats_current $genotypes ${output_folder}/$output_tag_current
+    time Rscript Determine_overlapping_SNPs.R $sumstats_current $genotypes ${output_folder}/$output_tag_current
 
     #Extract overlapping SNPs from the genotype data
-    plink --bfile $genotypes --allow-no-sex --extract ${output_folder}/${output_tag_current}_overlapping_SNPs.txt --make-bed --out ${output_folder}/${genotypes_stem}_${output_tag_current}
+    plink --bfile $genotypes --allow-no-sex --extract ${output_folder}/${output_tag_current}_overlapping_SNPs.txt --make-bed --out ${output_folder}/${genotypes_stem}_${output_tag_current} > /dev/null
     genotypes_new=${output_folder}/${genotypes_stem}_${output_tag_current}
 
+    printf "Step 2: Performing LD clumping for Soutput_tag_current \n\n"
     #Perform LD clumping
-    plink --bfile ${genotypes_new} --allow-no-sex --clump ${output_folder}/${output_tag_current}_summary_stats_updated.txt --clump-p1 1 --clump-r2 $r2thresh --clump-kb $window --out ${genotypes_new}
+    time plink --bfile ${genotypes_new} --allow-no-sex --clump ${output_folder}/${output_tag_current}_summary_stats_updated.txt --clump-p1 1 --clump-r2 $r2thresh --clump-kb $window --out ${genotypes_new} > /dev/null
+    printf "$( grep "clumps formed" ${genotypes_new}.log | grep -o -E '[0-9]+' | head -n1 ) clumps formed\n"
 
     #Create the input file for the score calculation
-    Rscript Generate_score_input_file.R ${genotypes_new}.clumped $sumstats_current
+    Rscript Generate_score_input_file.R ${genotypes_new}.clumped $sumstats_current $pvalues
 
     #create range file, with one line for each p value threshold
     for p in $( echo $pvalues | sed 's/,/ /g' ); do echo "Pval_$p 0 $p" >> ${output_folder}/${output_tag_current}_pvalue_range.txt ; done
 
+    printf "Step 3: Calculating PRS for ${output_tag_current}\n"
     #Calculate PRS
-    plink --bfile $genotypes_new --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out ${genotypes_new}_PRS
+    plink --bfile $genotypes_new --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out ${genotypes_new}_PRS > /dev/null
+    printf "$( grep "valid predictors" ${genotypes_new}.log | grep -o -E '[0-9]+' | head -n1 ) variants loaded for inclusion in the scores.\n"
     PRS_stem=${genotypes_new}_PRS
 
     #check for variants that failed to be incorporated into the score
@@ -82,17 +89,28 @@ current output tag: $output_tag_current
     then
 	printf "\n\nSome variants had mismatched alleles for the PRS. Attempting to flip the strands and rebuild the score.\n"
     
+#	#remove previous PRS
+#	rm ${PRS_stem}.profile
+
 	#Pull out list of SNPs with allele code mismatches
 	awk '{print $2}' ${PRS_stem}.nopred > ${PRS_stem}.flipsnps
 	
 	#Flip strand for list of SNPs
-	plink --bfile $genotypes_new --allow-no-sex --flip ${PRS_stem}.flipsnps --make-bed --out ${genotypes_new}_flipsnps
+	plink --bfile $genotypes_new --allow-no-sex --flip ${PRS_stem}.flipsnps --make-bed --out ${genotypes_new}_flipsnps > /dev/null
 
 	#Create .profile file
-	plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --score ${genotypes_new}_score_input.txt --out ${genotypes_new}_flipsnps_PRS
-	PRS_stem=${genotypes_new}_flipsnps_PRS
+	plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out $PRS_stem > /dev/null
+	printf "$( grep "valid predictors" ${genotypes_new}.log | grep -o -E '[0-9]+' | head -n1 ) variants loaded for inclusion in the scores."
     fi
+
+#Clean-up
+rm ${genotypes_new}*.bed ${genotypes_new}*.bim ${genotypes_new}*.fam ${genotypes_new}.clumped
+
 done
 
+printf "Step 4: Combining PRS into one file\n\n"
+
 #combine all PRS into one file
-Rscript Compile_PRS.R ${genotypes_new} $( ls ${output_folder}/*.profile )
+Rscript Compile_PRS.R $output_folder $genotypes_stem $output_tags $pvalues $output
+
+printf "$output PRS calculation complete.\n"
