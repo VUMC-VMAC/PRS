@@ -31,7 +31,9 @@ done
 #test validity of inputs and run location
 
 #print out inputs to the log
-printf "Input genotypes: $genotypes
+printf "Polygenic Risk Score Calculation Script
+
+Input genotypes: $genotypes
 Summary statistics: $sumstats
 Output folder: $output_folder
 PRS output labels: $output_tags
@@ -55,10 +57,10 @@ do
 sumstats_current=${sumstats_array[i]}
 output_tag_current=${output_tag_array[i]}
 
-    printf "Step 1: Determining overlapping variants between genotypes and $output_tag_current summary stats
+    printf "\nStep 1: Determining overlapping variants between genotypes and $output_tag_current summary stats
 
 current summary stats: $sumstats_current
-current output tag: $output_tag_current\n\n"
+current output tag: $output_tag_current\n"
 
     #get overlapping, non-palindromic variants
     Rscript Determine_overlapping_SNPs.R $sumstats_current $genotypes ${output_folder}/$output_tag_current
@@ -67,7 +69,7 @@ current output tag: $output_tag_current\n\n"
     plink --bfile $genotypes --allow-no-sex --extract ${output_folder}/${output_tag_current}_overlapping_SNPs.txt --make-bed --out ${output_folder}/${genotypes_stem}_${output_tag_current} > /dev/null 2>&1 
     genotypes_new=${output_folder}/${genotypes_stem}_${output_tag_current}
 
-    printf "Step 2: Performing LD clumping for Soutput_tag_current \n\n"
+    printf "Step 2: Performing LD clumping for Soutput_tag_current \n"
     #Perform LD clumping
     plink --bfile ${genotypes_new} --allow-no-sex --clump ${output_folder}/${output_tag_current}_summary_stats_updated.txt --clump-p1 1 --clump-r2 $r2thresh --clump-kb $window --out ${genotypes_new}  > /dev/null 2>&1
     
@@ -77,19 +79,19 @@ current output tag: $output_tag_current\n\n"
     #create range file, with one line for each p value threshold
     for p in $( echo $pvalues | sed 's/,/ /g' ); do echo "Pval_$p 0 $p" >> ${output_folder}/${output_tag_current}_pvalue_range.txt ; done
 
-    printf "\nStep 3: Calculating PRS for ${output_tag_current}\n"
+    printf "Step 3: Calculating PRS for ${output_tag_current}\n"
     #Calculate PRS
     plink --bfile $genotypes_new --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out ${genotypes_new}_PRS  > /dev/null 2>&1
     PRS_stem=${genotypes_new}_PRS
     
     #report the number of variants that were skipped, if any were skipped
     skipped_var=$( grep "lines skipped in --score" ${genotypes_new}_PRS.log | grep -o -E '[0-9]+' | head -n1 )
-    if [ ! -z "$skipped_var" ]; then printf "\n$skipped_var variants skipped from PRS calculation. See ${genotypes_new}_PRS.log for more details.\n"; fi
+    if [ ! -z "$skipped_var" ]; then printf "$skipped_var variants skipped from PRS calculation. See ${genotypes_new}_PRS.log for more details.\n"; fi
     
     #check for variants that failed to be incorporated into the score
     if [ -f  ${PRS_stem}.nopred ];
     then
-	printf "Some variants had mismatched alleles for the PRS. Attempting to flip the strands and rebuild the score.\n\n"
+	printf "Some variants had mismatched alleles for the PRS. Attempting to flip the strands and rebuild the score...\n"
     
 	#Pull out list of SNPs with allele code mismatches
 	awk '{print $2}' ${PRS_stem}.nopred > ${PRS_stem}.flipsnps
@@ -101,7 +103,7 @@ current output tag: $output_tag_current\n\n"
 	plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out $PRS_stem  > /dev/null 2>&1
 	#report the number of variants that were skipped, if any were skipped
 	skipped_var=$( grep "lines skipped in --score" ${genotypes_new}_PRS.log | grep -o -E '[0-9]+' | head -n1 )
-	if [ ! -z "$skipped_var" ]; then printf "\n$skipped_var variants skipped from PRS calculation. See ${genotypes_new}_PRS.log for more details.\n"; fi
+	if [ ! -z "$skipped_var" ]; then printf "$skipped_var variants skipped from PRS calculation. See ${genotypes_new}_PRS.log for more details.\n"; fi
     fi
 
 #Clean-up
@@ -109,11 +111,11 @@ rm ${genotypes_new}*.bed ${genotypes_new}*.bim ${genotypes_new}*.fam ${genotypes
 
 done
 
-printf "Step 4: Combining PRS into one file\n\n"
+printf "Step 4: Combining PRS into one file\n"
 
 #combine all PRS into one file
 Rscript Compile_PRS.R $output_folder $genotypes_stem $output_tags $pvalues $output
 
-printf "Step5: Generating correlation plot of all generated scores\n\n"
+printf "Step5: Generating correlation plot of all generated scores\n"
 
 Rscript Create_PRS_corplot.R ${output_folder}/${output}.txt

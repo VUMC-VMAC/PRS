@@ -23,7 +23,7 @@ summary_snp_overlap <- sumstats[sumstats$SNP %in% clumped$SNP,]
 #split the pvalues from being comma separated
 pvalues <- as.numeric(unlist(strsplit(pvalues, ",")))
 print(paste("Out of", nrow(summary_snp_overlap), "variants resulting from clumping, there are the following numbers of variants at each p-value threshold:"))
-sapply(1:length(pvalues), function(x) paste(sum(summary_snp_overlap$P <= pvalues[x]), "variants with p values less than or equal to", pvalues[x])) 
+sapply(1:length(pvalues), function(x) paste(sum(as.numeric(summary_snp_overlap$P) <= pvalues[x]), "variants with p values less than or equal to", pvalues[x])) 
 
 
 #export plink input file
