@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #fail on error
-set -e
+set -eu
 
 ############################# Verify inputs ############################
 
