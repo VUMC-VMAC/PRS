@@ -25,7 +25,6 @@ pvalues <- as.numeric(unlist(strsplit(pvalues, ",")))
 print(paste("Out of", nrow(summary_snp_overlap), "variants resulting from clumping, there are the following numbers of variants at each p-value threshold:"))
 sapply(1:length(pvalues), function(x) paste(sum(as.numeric(summary_snp_overlap$P) <= pvalues[x]), "variants with p values less than or equal to", pvalues[x])) 
 
-
 #export plink input file
-summary_snp_overlap <- summary_snp_overlap[,c("SNP","A1","BETA")]
+summary_snp_overlap <- summary_snp_overlap[,c("SNP","A1","BETA", "P")]
 write.table(summary_snp_overlap,paste0(clumped_stem, "_score_input.txt"),quote=FALSE, row.names=FALSE, col.names=FALSE, sep="\t")

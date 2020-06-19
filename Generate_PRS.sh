@@ -67,7 +67,7 @@ R-squared threshold: $r2thresh
 Window size: $window
 "
 
-if [ "$apoe_exclude" == "yes" ];
+if [ "$apoe_exclude" = "yes" ];
 then 
     printf "PRS will be calculated with and without the APOE region (using coordinates from genome build ${genome_build}).\n"
 fi
@@ -79,25 +79,33 @@ then
     exit 1
 fi
 
-
 #get genotypes_stem (sans path) using shell magic
 genotypes_stem=${genotypes##*/}
 
 #split summary stats and output tags into arrays for easy parsing
-IFS=',' read -r -a sumstats_array <<< "$sumstats"
-IFS=',' read -r -a output_tag_array <<< "$output_tags"
+sumstats_array=(${sumstats//,/ })
+output_tag_array=(${output_tags//,/ })
 
 ############################# Start actually doing things ############################
 
 for i in ${!sumstats_array[@]};
 do
-sumstats_current=${sumstats_array[i]}
-output_tag_current=${output_tag_array[i]}
+    sumstats_current=${sumstats_array[i]}
+    output_tag_current=${output_tag_array[i]}
 
     printf "\nStep 1: Determining overlapping variants between genotypes and $output_tag_current summary stats
 
 current summary stats: $sumstats_current
 current output tag: $output_tag_current\n"
+
+    #check to make sure required columns are present
+    if [[ $( head -n1 $sumstats_current | grep -o "SNP" ) ]] && [[ $( head -n1 $sumstats_current | grep -o "BETA" ) ]] && [[ $( head -n1 $sumstats_current | grep -o "A1" ) ]] && [[ $( head -n1 $sumstats_current | grep -o "P" ) ]]; 
+    then 
+	printf "All necessary columns are present in the summary stats.\n" ; 
+    else 
+	printf "One or more of the necessary columns (SNP, A1, BETA, P) not present in the summary stats! Please confirm the columns are present and are named correctly and retry.\n" 
+	exit 1 ; 
+    fi
 
     #get overlapping, non-palindromic variants
     Rscript Determine_overlapping_SNPs.R $sumstats_current $genotypes ${output_folder}/$output_tag_current
@@ -114,12 +122,14 @@ current output tag: $output_tag_current\n"
     Rscript Generate_score_input_file.R ${genotypes_new}.clumped $sumstats_current $pvalues
 
     #create range file, with one line for each p value threshold
+    > ${output_folder}/${output_tag_current}_pvalue_range.txt
     for p in $( echo $pvalues | sed 's/,/ /g' ); do echo "Pval_$p 0 $p" >> ${output_folder}/${output_tag_current}_pvalue_range.txt ; done
 
     printf "Step 3: Calculating PRS for ${output_tag_current}\n"
     #Calculate PRS
-    plink --bfile $genotypes_new --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out ${genotypes_new}_PRS  > /dev/null 2>&1
+    plink --bfile $genotypes_new --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_PRS  > /dev/null 2>&1
     PRS_stem=${genotypes_new}_PRS
+
     #report the number of variants that were skipped, if any were skipped
     skipped_var=$( grep "lines skipped in --score" ${genotypes_new}_PRS.log | grep -o -E '[0-9]+' | head -n1 )
     if [ ! -z "$skipped_var" ]; then printf "$skipped_var variants skipped from PRS calculation. See ${genotypes_new}_PRS.log for more details.\n"; fi
@@ -129,7 +139,7 @@ current output tag: $output_tag_current\n"
     then
 	printf "Calculating PRS for ${output_tag_current} without the APOE region\n"
 	#Calculate PRS
-	plink --bfile $genotypes_new --allow-no-sex --exclude range APOE_region_${genome_build}.txt --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out ${genotypes_new}_noAPOE_PRS  > /dev/null 2>&1
+	plink --bfile $genotypes_new --allow-no-sex --exclude range APOE_region_${genome_build}.txt --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_noAPOE_PRS  > /dev/null 2>&1
     fi
         
     #check for variants that failed to be incorporated into the score
@@ -144,7 +154,7 @@ current output tag: $output_tag_current\n"
 	plink --bfile $genotypes_new --allow-no-sex --flip ${PRS_stem}.flipsnps --make-bed --out ${genotypes_new}_flipsnps  > /dev/null 2>&1
 
 	#Create .profile file
-	plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out $PRS_stem  > /dev/null 2>&1
+	plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out $PRS_stem  > /dev/null 2>&1
 	#report the number of variants that were skipped, if any were skipped
 	skipped_var=$( grep "lines skipped in --score" ${genotypes_new}_PRS.log | grep -o -E '[0-9]+' | head -n1 )
 	if [ ! -z "$skipped_var" ]; then printf "$skipped_var variants skipped from PRS calculation. See ${genotypes_new}_PRS.log for more details.\n"; fi
@@ -155,7 +165,7 @@ current output tag: $output_tag_current\n"
 	then
 	    printf "Recalculating the PRS excluding the APOE region.\n"
             #Calculate PRS
-            plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --exclude range APOE_region_${genome_build}.txt --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 3 --out ${genotypes_new}_noAPOE_PRS  > /dev/null 2>&1
+            plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --exclude range APOE_region_${genome_build}.txt --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_noAPOE_PRS  > /dev/null 2>&1
 	fi
 
 
