@@ -10,10 +10,10 @@ display_usage() {
     printf "Polygenic Risk Score Calculation Script
 
 Usage:
-Generate_PRS.sh -i GENOTYPES_STEM -s SUMMARY_STATISTICS -f OUTPUT_FOLDER -t OUTPUT_TAGS -o OUTPUT_STEM -p PVALUE_THRESHOLDS -r R2_THRESHOLD -w CLUMPING_WINDOW -b GENOME_BUILD -a
+Generate_PRS.sh -i GENOTYPES_STEM -s SUMMARY_STATISTICS -f OUTPUT_FOLDER -t OUTPUT_TAGS -o OUTPUT_STEM -p PVALUE_THRESHOLDS -r R2_THRESHOLD -w CLUMPING_WINDOW -b GENOME_BUILD -a -l
 
 GENOTYPES_STEM = the full path and stem to the genotypes for individuals to calculate the risk scores in (must be in plink binary format)
-SUMMARY_STATISTICS = the full path and file name for the summary statistics to calculate the risk scores from (must have the columns SNP, A1, BETA, and P, but can jave other columns as well); note that you can specify multiple summary statistics files here separated by a comma (no space)
+SUMMARY_STATISTICS = the full path and file name for the summary statistics to calculate the risk scores from (must have the columns SNP, A1, BETA/OR, and P, but can have other columns as well); note that you can specify multiple summary statistics files here separated by a comma (no space); if the -l flag is used, the results are assumed to be from logistic regression and having an odds ratio (OR) column; otherwise, results are assumed to be from a regular linear model and having the BETA column.
 OUTPUT_FOLDER = the folder in which to calculate the PRS
 OUTPUT_TAGS = a tag for each summary statistics file supplied (comma separated with no space); will be in the variable name in the outputted file with all the PRS
 OUTPUT_STEM = name for the output file of all the PRS calculated
@@ -23,6 +23,7 @@ CLUMPING_WINDOW = window in which to conduct the clumping; default is plink's de
 GENOME_BUILD = the genome build for the input genotypes; only used if the -a flag is given; default is b38 (optional)
 
 -a indicates to exclude the APOE region from PRS calculation
+-l indicates that the summary stats are from logistic regression, in which case the weight will be pulled from the OR column
 
 -h will show this usage
 "
@@ -36,7 +37,7 @@ apoe_exclude=no
 genome_build=b38
 
 #parse arguments
-while getopts 'i:s:f:t:o:p:r:w:b:ah' flag; do
+while getopts 'i:s:f:t:o:p:r:w:b:alh' flag; do
   case "${flag}" in
     i) genotypes="${OPTARG}" ;;
     s) sumstats="${OPTARG}" ;;
@@ -99,11 +100,17 @@ current summary stats: $sumstats_current
 current output tag: $output_tag_current\n"
 
     #check to make sure required columns are present
-    if [[ $( head -n1 $sumstats_current | grep -o "SNP" ) ]] && [[ $( head -n1 $sumstats_current | grep -o "BETA" ) ]] && [[ $( head -n1 $sumstats_current | grep -o "A1" ) ]] && [[ $( head -n1 $sumstats_current | grep -o "P" ) ]]; 
+    if [[ $( head -n1 $sumstats_current | grep -o "SNP" ) ]] &&  [[ $( head -n1 $sumstats_current | grep -o "A1" ) ]] && [[ $( head -n1 $sumstats_current | grep -o "P" ) ]]; 
     then 
-	printf "All necessary columns are present in the summary stats.\n" ; 
+	if [[ $( head -n1 $sumstats_current | grep -o "BETA" ) ]] || [[ $( head -n1 $sumstats_current | grep -o "OR" ) ]];
+	then
+	    printf "All necessary columns are present in the summary stats.\n" ; 
+	else 
+	    printf "One or more of the necessary columns (SNP, A1, BETA/OR, P) not present in the summary stats! Please confirm the columns are present and are named correctly and retry.\n"
+        exit 1 ;
+	fi
     else 
-	printf "One or more of the necessary columns (SNP, A1, BETA, P) not present in the summary stats! Please confirm the columns are present and are named correctly and retry.\n" 
+	printf "One or more of the necessary columns (SNP, A1, BETA/OR, P) not present in the summary stats! Please confirm the columns are present and are named correctly and retry.\n" 
 	exit 1 ; 
     fi
 
