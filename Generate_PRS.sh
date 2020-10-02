@@ -186,6 +186,16 @@ done
 printf "Step 4: Combining PRS into one file\n"
 
 #combine all PRS into one file
+##but first echo the inputs
+printf "
+Inputs for the combo file:
+Output folder: $output_folder
+Genotypes stem: $genotypes_stem
+Output tags: $output_tags
+P values: $pvalues
+Output name: $output
+Exclude APOE? $apoe_exclude
+"
 Rscript Compile_PRS.R $output_folder $genotypes_stem $output_tags $pvalues $output $apoe_exclude
 
 printf "Step 5: Generating correlation plot of all generated scores\n"
