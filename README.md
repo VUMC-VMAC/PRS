@@ -19,15 +19,25 @@ singularity exec --containall --bind /scratch/:/scratch CNT_genomic_processing_v
 		 -p 0.01 -r 0.25 -w 500 -a -b b37"
 ```
 
--i specifies the input genotypes.
--s specifies the summary statistics for calculating the score. Notice that multiple summary stats files can be supplied, separated by a comma.
--f specifies the output folder in which results should be saved.
--t specifies the tag or label for each of the specified summary statistics. This will be the name of the column of each score in the output file.
--o specifies the output label for the final file.
+## Flags:
+Define inputs: 
+* -i specifies the input genotypes.
+* -s specifies the summary statistics for calculating the score. Notice that multiple summary stats files can be supplied, separated by a comma.
+* -l specifies that the input is from logistic regression and will assume the column from which to build the score will be OR rather than BETA. 
+
+Define outputs:
+* -f specifies the output folder in which results should be saved.
+* -t specifies the tag or label for each of the specified summary statistics. This will be the name of the column of each score in the output file.
+* -o specifies the output label for the final file.
+
+Define score calculation thresholds:
+
 [The following 3 options (p, r, and w) can be left unset. If they are not set, plink clumping defaults will be used (p=0.0001, r2=0.5, window=250).]
--p specifies the p-value threshold to use for clumping. More than 1 p-value threshold can be supplied here, separated by a comma (no space).
--r specifies the r2 threshold for clumping. 
--w specifies the clumping window.
--a specifies whether to calculate with and without APOE. 
--b specifies the input genome build, only relevant if calculating without APOE since this just defines the base pair window for APOE exclusion. If this is not set and APOE is to be excluded, the build is assumed to be build 38.
--l specifies that the input is from logistic regression and will assume the column from which to build the score will be OR rather than BETA. 
+* -p specifies the p-value threshold to use for clumping. More than 1 p-value threshold can be supplied here, separated by a comma (no space).
+* -r specifies the r2 threshold for clumping. 
+* -w specifies the clumping window.
+
+APOE inclusion/exclusion:
+* -a specifies whether to calculate with and without APOE. 
+* -b specifies the input genome build, only relevant if calculating without APOE since this just defines the base pair window for APOE exclusion. If this is not set and APOE is to be excluded, the build is assumed to be build 38.
+
