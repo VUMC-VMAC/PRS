@@ -26,7 +26,7 @@ print(paste("Out of", nrow(summary_snp_overlap), "variants resulting from clumpi
 sapply(1:length(pvalues), function(x) paste(sum(as.numeric(summary_snp_overlap$P) <= pvalues[x]), "variants with p values less than or equal to", pvalues[x])) 
 
 #export plink input file
-if(grepl("BETA", names(summary_snp_overlap))){
+if(sum(grepl("BETA", names(summary_snp_overlap)))){
    summary_snp_overlap <- summary_snp_overlap[,c("SNP","A1","BETA", "P")]
 } else {
    summary_snp_overlap <- summary_snp_overlap[,c("SNP","A1","OR", "P")]
