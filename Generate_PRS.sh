@@ -178,8 +178,9 @@ current output tag: $output_tag_current\n"
 
     fi
 
-#Clean-up
-rm ${genotypes_new}*.bed ${genotypes_new}*.bim ${genotypes_new}*.fam ${genotypes_new}.clumped
+##Clean-up
+#rm ${genotypes_new}*.bed ${genotypes_new}*.bim ${genotypes_new}*.fam ${genotypes_new}.clumped
+rm ${genotypes_new}*.bed
 
 done
 
