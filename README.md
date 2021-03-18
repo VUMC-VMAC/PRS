@@ -1,9 +1,14 @@
 # Polygenic Risk Score Pipeline
 
-This repository contains the scripts to run the CNT polygenic risk score pipeline. These are contained within the CNT genomic processing container (current version: CNT_genomic_processing_v1.simg). 
+This repository contains the scripts to run the CNT polygenic risk score pipeline. These are contained within the CNT genomic processing container (current version: CNT_genomic_processing_v2.4.simg). 
+
+For each summary statistics file supplied and for each p value threshold, these steps are completed:
+* Subset to overlapping variants between input genotypes and summary statistics
+* Perform LD clumping (default thresholds: p=0.01, r2=0.5, window = 250kb)
+* Calculate the PRS using the standard averaging method (for missing data, the average frequency is used)
+* Combine all PRS into one file
 
 Before running the pipeline, the input genotypes of the samples to calculate the PRS for must be in plink format and the summary statistics must be formatted to have SNP, A1, BETA or OR, and P columns. They can have additional columns which will be ignored.
-
 
 To run the pipeline, use a command similar to the following:
 
