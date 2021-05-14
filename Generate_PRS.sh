@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #fail on error
-set -eu
+set -e
 
 ############################# Verify inputs ############################
 
@@ -116,6 +116,8 @@ current output tag: $output_tag_current\n"
 
     #get overlapping, non-palindromic variants
     Rscript Determine_overlapping_SNPs.R $sumstats_current $genotypes ${output_folder}/$output_tag_current
+    #update summary stats variable to refer to the one updated for allele flips
+    sumstats_current=${output_folder}/${output_tag_current}_summary_stats_updated.txt
 
     #Extract overlapping SNPs from the genotype data
     plink --bfile $genotypes --allow-no-sex --extract ${output_folder}/${output_tag_current}_overlapping_SNPs.txt --make-bed --out ${output_folder}/${genotypes_stem}_${output_tag_current} > /dev/null 2>&1 

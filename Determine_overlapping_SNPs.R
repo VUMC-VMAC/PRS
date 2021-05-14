@@ -8,14 +8,14 @@ library(data.table)
 ## compare the summary stats to the input genotypes to get overlapping, non-palindromic variants
 
 # import already cleaned summary stats
-summary <- fread(sumstats, select = c("SNP", "BETA", "P"))
+summary <- fread(sumstats, select = c("SNP", "A1", "A2", "BETA", "P"))
 
 # import Cohort SNPs
-genetic <- fread(paste0(genotypes,".bim"), select = c(2,5,6))
-names(genetic) <- c("SNP","A1","A2")
+genetic <- fread(paste0(genotypes,".bim"), select = c(2))
+names(genetic) <- c("SNP")
 
 # determine SNP overlap
-summary_genetic_overlap <- merge(genetic, summary, by = "SNP")
+summary_genetic_overlap <- summary[summary$SNP %in% genetic$SNP,]
 
 # Remove ambiguous SNPs (ie, A/T and G/C SNPs)
 ambigSNPs <- summary_genetic_overlap$SNP[(summary_genetic_overlap$A1=="A" & summary_genetic_overlap$A2=="T") | 
