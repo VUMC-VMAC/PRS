@@ -123,9 +123,20 @@ current output tag: $output_tag_current\n"
     plink --bfile $genotypes --allow-no-sex --extract ${output_folder}/${output_tag_current}_overlapping_SNPs.txt --make-bed --out ${output_folder}/${genotypes_stem}_${output_tag_current} > /dev/null 2>&1 
     genotypes_new=${output_folder}/${genotypes_stem}_${output_tag_current}
     
+    #check to see if the R script identified variants to 
+    if [ -f "${output_folder}/${output_tag_current}_SNPs_to_flip.txt" ];
+    then
+	printf "Flipping variants...\n\n"
+	#flip the variants identified by script to flip
+	plink --bfile $genotypes_new --flip ${output_folder}/${output_tag_current}_SNPs_to_flip.txt --make-bed --out ${genotypes_new}_flip > /dev/null 2>&1
+	genotypes_new=${genotypes_new}_flip 
+    fi
+
     printf "Step 2: Performing LD clumping for $output_tag_current \n"
-    #Perform LD clumping
-    plink --bfile ${genotypes_new} --allow-no-sex --clump ${output_folder}/${output_tag_current}_summary_stats_updated.txt --clump-p1 1 --clump-r2 $r2thresh --clump-kb $window --out ${genotypes_new}  > /dev/null 2>&1
+    #get the largest p value 
+    maxp=$( echo $pvalues | sed 's/,/\n/g' | sort -n | tail -n1 )
+    #Perform LD clumping, with the p value threshold of the largest p value
+    plink --bfile ${genotypes_new} --allow-no-sex --clump ${output_folder}/${output_tag_current}_summary_stats_updated.txt --clump-p1 $maxp --clump-r2 $r2thresh --clump-kb $window --out ${genotypes_new}  > /dev/null 2>&1
     
     #Create the input file for the score calculation
     Rscript Generate_score_input_file.R ${genotypes_new}.clumped $sumstats_current $pvalues
@@ -186,21 +197,23 @@ rm ${genotypes_new}*.bed
 
 done
 
-printf "Step 4: Combining PRS into one file\n"
+printf "PRS generation complete! Find the PRS in the ${output_folder}/*.profile files.\n"
 
-#combine all PRS into one file
-##but first echo the inputs
-printf "
-Inputs for the combo file:
-Output folder: $output_folder
-Genotypes stem: $genotypes_stem
-Output tags: $output_tags
-P values: $pvalues
-Output name: $output
-Exclude APOE? $apoe_exclude
-"
-Rscript Compile_PRS.R $output_folder $genotypes_stem $output_tags $pvalues $output $apoe_exclude
+# printf "Step 4: Combining PRS into one file\n"
 
-printf "Step 5: Generating correlation plot of all generated scores\n"
+# #combine all PRS into one file
+# ##but first echo the inputs
+# printf "
+# Inputs for the combo file:
+# Output folder: $output_folder
+# Genotypes stem: $genotypes_stem
+# Output tags: $output_tags
+# P values: $pvalues
+# Output name: $output
+# Exclude APOE? $apoe_exclude
+# "
+# Rscript Compile_PRS.R $output_folder $genotypes_stem $output_tags $pvalues $output $apoe_exclude
 
-Rscript Create_PRS_corplot.R ${output_folder}/${output}.txt
+# printf "Step 5: Generating correlation plot of all generated scores\n"
+
+# Rscript Create_PRS_corplot.R ${output_folder}/${output}.txt
