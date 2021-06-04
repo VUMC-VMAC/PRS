@@ -7,6 +7,8 @@ pvalues <- args[3]
 
 library(data.table)
 
+setDTthreads(4)
+
 #get the stem
 clumped_stem <- gsub("\\..*","",clumped)
 

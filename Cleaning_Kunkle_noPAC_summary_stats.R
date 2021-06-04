@@ -2,6 +2,8 @@
 
 library(data.table)
 
+setDTthreads(4)
+
 ##read in summary stats, n variants = 9,556,884
 sumstats <- fread("/nfs/clarklc/PRS/Summary_Stats/IGAP2_ModelB_METAL_COMMON.InvVar.woADNI_BIOCARD_WASHU.METAANALYSIS.TBL")
 

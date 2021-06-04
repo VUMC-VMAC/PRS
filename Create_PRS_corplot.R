@@ -5,6 +5,8 @@ library(corrplot)
 library(colorspace)
 library(data.table)
 
+setDTthreads(4)
+
 prs <- fread(PRS_file)
 
 #plot title

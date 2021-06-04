@@ -8,6 +8,8 @@ apoe_exclude <- args[6]
 
 library(data.table)
 
+setDTthreads(4)
+
 #split the comma separated arguments
 output_tags <- unlist(strsplit(output_tags, ","))
 pvalues <- unlist(strsplit(pvalues, ","))

@@ -5,6 +5,8 @@ PRS_tag <- args[3] #outcome
 
 library(data.table)
 
+setDTthreads(4)
+
 ## compare the summary stats to the input genotypes to get overlapping, non-palindromic variants
 
 # import already cleaned summary stats

@@ -10,7 +10,7 @@ display_usage() {
     printf "Polygenic Risk Score Calculation Script
 
 Usage:
-Generate_PRS.sh -i GENOTYPES_STEM -s SUMMARY_STATISTICS -f OUTPUT_FOLDER -t OUTPUT_TAGS -o OUTPUT_STEM -p PVALUE_THRESHOLDS -r R2_THRESHOLD -w CLUMPING_WINDOW -b GENOME_BUILD -a -l
+Generate_PRS.sh -i GENOTYPES_STEM -s SUMMARY_STATISTICS -f OUTPUT_FOLDER -t OUTPUT_TAGS -o OUTPUT_STEM -p PVALUE_THRESHOLDS -r R2_THRESHOLD -w CLUMPING_WINDOW -b GENOME_BUILD -a -l -m MEMORY_LIMIT
 
 GENOTYPES_STEM = the full path and stem to the genotypes for individuals to calculate the risk scores in (must be in plink binary format)
 SUMMARY_STATISTICS = the full path and file name for the summary statistics to calculate the risk scores from (must have the columns SNP, A1, BETA/OR, and P, but can have other columns as well); note that you can specify multiple summary statistics files here separated by a comma (no space); if the -l flag is used, the results are assumed to be from logistic regression and having an odds ratio (OR) column; otherwise, results are assumed to be from a regular linear model and having the BETA column.
@@ -21,6 +21,7 @@ PVALUE_THRESHOLDS = comma separated p value thresholds for variants to be includ
 R2_THRESHOLD = r-squared threshold for clumping; default is plink's default of 0.5 (optional)
 CLUMPING_WINDOW = window in which to conduct the clumping; default is plink's default of 250 (optional)
 GENOME_BUILD = the genome build for the input genotypes; only used if the -a flag is given; default is b38 (optional)
+MEMORY_LIMIT = memory limit for plink calls in MB; especially helpful when running on badger rather than on slurm (optional)
 
 -a indicates to exclude the APOE region from PRS calculation
 -l indicates that the summary stats are from logistic regression, in which case the weight will be pulled from the OR column
@@ -35,9 +36,10 @@ r2thresh=0.5
 window=250
 apoe_exclude=no
 genome_build=b38
+memory_limit=""
 
 #parse arguments
-while getopts 'i:s:f:t:o:p:r:w:b:alh' flag; do
+while getopts 'i:s:f:t:o:p:r:w:b:m:alh' flag; do
   case "${flag}" in
     i) genotypes="${OPTARG}" ;;
     s) sumstats="${OPTARG}" ;;
@@ -48,6 +50,7 @@ while getopts 'i:s:f:t:o:p:r:w:b:alh' flag; do
     r) r2thresh="${OPTARG}" ;;
     w) window="${OPTARG}" ;;
     b) genome_build="${OPTARG}" ;;
+    m) memory_limit="${OPTARG}";;
     a) apoe_exclude=yes ;;
     h) display_usage ; exit ;;
     \?|*) display_usage
@@ -71,6 +74,12 @@ Window size: $window
 if [ "$apoe_exclude" = "yes" ];
 then 
     printf "PRS will be calculated with and without the APOE region (using coordinates from genome build ${genome_build}).\n"
+fi
+
+if [ "$memory_limit" ];
+then 
+    printf "Memory limit for plink calls: $memory_limit \n"
+    memory_limit=$( echo "--memory $memory_limit" )
 fi
 
 #make sure the script is being run from the scripts directory
@@ -120,7 +129,7 @@ current output tag: $output_tag_current\n"
     sumstats_current=${output_folder}/${output_tag_current}_summary_stats_updated.txt
 
     #Extract overlapping SNPs from the genotype data
-    plink --bfile $genotypes --allow-no-sex --extract ${output_folder}/${output_tag_current}_overlapping_SNPs.txt --make-bed --out ${output_folder}/${genotypes_stem}_${output_tag_current} > /dev/null 2>&1 
+    plink --bfile $genotypes --allow-no-sex --extract ${output_folder}/${output_tag_current}_overlapping_SNPs.txt --make-bed --out ${output_folder}/${genotypes_stem}_${output_tag_current} ${memory_limit} > /dev/null 2>&1 
     genotypes_new=${output_folder}/${genotypes_stem}_${output_tag_current}
     
     #check to see if the R script identified variants to 
@@ -128,7 +137,7 @@ current output tag: $output_tag_current\n"
     then
 	printf "Flipping variants...\n\n"
 	#flip the variants identified by script to flip
-	plink --bfile $genotypes_new --flip ${output_folder}/${output_tag_current}_SNPs_to_flip.txt --make-bed --out ${genotypes_new}_flip > /dev/null 2>&1
+	plink --bfile $genotypes_new --flip ${output_folder}/${output_tag_current}_SNPs_to_flip.txt --make-bed --out ${genotypes_new}_flip ${memory_limit} > /dev/null 2>&1
 	genotypes_new=${genotypes_new}_flip 
     fi
 
@@ -136,7 +145,7 @@ current output tag: $output_tag_current\n"
     #get the largest p value 
     maxp=$( echo $pvalues | sed 's/,/\n/g' | sort -n | tail -n1 )
     #Perform LD clumping, with the p value threshold of the largest p value
-    plink --bfile ${genotypes_new} --allow-no-sex --clump ${output_folder}/${output_tag_current}_summary_stats_updated.txt --clump-p1 $maxp --clump-r2 $r2thresh --clump-kb $window --out ${genotypes_new}  > /dev/null 2>&1
+    plink --bfile ${genotypes_new} --allow-no-sex --clump ${output_folder}/${output_tag_current}_summary_stats_updated.txt --clump-p1 $maxp --clump-r2 $r2thresh --clump-kb $window --out ${genotypes_new} ${memory_limit} > /dev/null 2>&1
     
     #Create the input file for the score calculation
     Rscript Generate_score_input_file.R ${genotypes_new}.clumped $sumstats_current $pvalues
@@ -147,7 +156,7 @@ current output tag: $output_tag_current\n"
 
     printf "Step 3: Calculating PRS for ${output_tag_current}\n"
     #Calculate PRS
-    plink --bfile $genotypes_new --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_PRS  > /dev/null 2>&1
+    plink --bfile $genotypes_new --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_PRS ${memory_limit} > /dev/null 2>&1
     PRS_stem=${genotypes_new}_PRS
 
     #report the number of variants that were skipped, if any were skipped
@@ -159,7 +168,7 @@ current output tag: $output_tag_current\n"
     then
 	printf "Calculating PRS for ${output_tag_current} without the APOE region\n"
 	#Calculate PRS
-	plink --bfile $genotypes_new --allow-no-sex --exclude range APOE_region_${genome_build}.txt --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_noAPOE_PRS  > /dev/null 2>&1
+	plink --bfile $genotypes_new --allow-no-sex --exclude range APOE_region_${genome_build}.txt --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_noAPOE_PRS ${memory_limit} > /dev/null 2>&1
     fi
         
     #check for variants that failed to be incorporated into the score
@@ -171,10 +180,10 @@ current output tag: $output_tag_current\n"
 	awk '{print $2}' ${PRS_stem}.nopred > ${PRS_stem}.flipsnps
 	
 	#Flip strand for list of SNPs
-	plink --bfile $genotypes_new --allow-no-sex --flip ${PRS_stem}.flipsnps --make-bed --out ${genotypes_new}_flipsnps  > /dev/null 2>&1
+	plink --bfile $genotypes_new --allow-no-sex --flip ${PRS_stem}.flipsnps --make-bed --out ${genotypes_new}_flipsnps ${memory_limit} > /dev/null 2>&1
 
 	#Create .profile file
-	plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out $PRS_stem  > /dev/null 2>&1
+	plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out $PRS_stem ${memory_limit} > /dev/null 2>&1
 	#report the number of variants that were skipped, if any were skipped
 	skipped_var=$( grep "lines skipped in --score" ${genotypes_new}_PRS.log | grep -o -E '[0-9]+' | head -n1 )
 	if [ ! -z "$skipped_var" ]; then printf "$skipped_var variants skipped from PRS calculation. See ${genotypes_new}_PRS.log for more details.\n"; fi
@@ -185,7 +194,7 @@ current output tag: $output_tag_current\n"
 	then
 	    printf "Recalculating the PRS excluding the APOE region.\n"
             #Calculate PRS
-            plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --exclude range APOE_region_${genome_build}.txt --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_noAPOE_PRS  > /dev/null 2>&1
+            plink --bfile ${genotypes_new}_flipsnps --allow-no-sex --exclude range APOE_region_${genome_build}.txt --score ${genotypes_new}_score_input.txt --q-score-range ${output_folder}/${output_tag_current}_pvalue_range.txt ${genotypes_new}_score_input.txt 1 4 --out ${genotypes_new}_noAPOE_PRS ${memory_limit} > /dev/null 2>&1
 	fi
 
 
