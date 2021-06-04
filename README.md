@@ -1,6 +1,6 @@
 # Polygenic Risk Score Pipeline
 
-This repository contains the scripts to run the CNT polygenic risk score pipeline. These are contained within the CNT genomic processing container (current version: CNT_genomic_processing_v2.4.simg). 
+This repository contains the scripts to run the CNT polygenic risk score pipeline. These are contained within the CNT genomic processing container (current version: CNT_genomic_processing_v2.5.simg). 
 
 For each summary statistics file supplied and for each p value threshold, these steps are completed:
 * Subset to overlapping variants between input genotypes and summary statistics
@@ -46,3 +46,4 @@ APOE inclusion/exclusion:
 * -a specifies whether to calculate with and without APOE. 
 * -b specifies the input genome build, only relevant if calculating without APOE since this just defines the base pair window for APOE exclusion. If this is not set and APOE is to be excluded, the build is assumed to be build 38.
 
+* -m specifies a memory limit for all plink commands (in MB). This can be left unspecified which will result in no memory limit being applied. 
