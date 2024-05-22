@@ -1,6 +1,6 @@
 # Polygenic Risk Score Pipeline
 
-This repository contains the scripts to run the CNT polygenic risk score pipeline. These are contained within the CNT genomic processing container (current version: CNT_genomic_processing_v2.5.simg). 
+This repository contains the scripts to run the CNT polygenic risk score pipeline. These are contained within the CNT genomic processing container (current version: CNT_genomic_processing_v4.simg). 
 
 For each summary statistics file supplied and for each p value threshold, these steps are completed:
 * Subset to overlapping variants between input genotypes and summary statistics
@@ -13,7 +13,7 @@ Before running the pipeline, the input genotypes of the samples to calculate the
 To run the pipeline, use a command similar to the following:
 
 ```
-singularity exec --containall --bind /scratch/:/scratch CNT_genomic_processing_v1.simg \
+singularity exec --containall --bind /scratch/:/scratch CNT_genomic_processing.simg \
 	    /bin/bash -c "cd /scripts/PRS ; \
 	    bash Generate_PRS.sh 
 	    	 -i /scratch/mahone1/PRS/A4_NHW_imputed_final \
