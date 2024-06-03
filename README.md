@@ -11,11 +11,10 @@ For each summary statistics file supplied and for each p value threshold, these 
 Before running the pipeline, the input genotypes of the samples to calculate the PRS for must be in plink format and the summary statistics must be formatted to have SNP, A1, BETA or OR, and P columns. They can have additional columns which will be ignored.
 
 To run the pipeline, use a command similar to the following:
-
 ```
-singularity exec --containall --bind /scratch/:/scratch CNT_genomic_processing.simg \
+singularity exec --containall --bind /nobackup/:/scratch/ CNT_genomic_processing.simg \
 	    /bin/bash -c "cd /scripts/PRS ; \
-	    bash Generate_PRS.sh 
+	    bash Generate_PRS.sh \
 	    	 -i /scratch/mahone1/PRS/A4_NHW_imputed_final \
 	    	 -s /scratch/mahone1/PRS/summary_stats/Jansenetal_summary_stats_b38.txt,/scratch/mahone1/PRS/summary_stats/Kunkle_all_summary_stats_cleaned_b38.txt \
 		 -f /scratch/mahone1/PRS/A4/ \
@@ -24,7 +23,19 @@ singularity exec --containall --bind /scratch/:/scratch CNT_genomic_processing.s
 		 -p 0.01 -r 0.25 -w 500 -a -b b37"
 ```
 
-## Flags:
+## Singularity command
+
+The pipeline is run inside a singularity to minimize set-up and avoid dependency issues. A basic summary of the anatomy of the singularity command is below. 
+
+* singularity - indicates you are running a singularity command
+* exec - indicates that you want to execute a command(s) inside the singularity
+* --containall - tells the singularity to only "see" locations within the singularity and whatever other locations are explicitly bound (avoids potential issues if there are presets in the user's home folder)
+* --bind - indicates a location in the file system and the corresponding name to which it should be bound within the singularity (separated by a colon)
+* *.simg - indicates the singularity container image to be used
+* /bin/bash - indicates which language interpreter should be used when running the commands
+* -c - indicates the commands to be run within the singularity in quotes
+
+## Flags for the Generate_PRS.sh script:
 Define inputs: 
 * -i specifies the input genotypes.
 * -s specifies the summary statistics for calculating the score. Notice that multiple summary stats files can be supplied, separated by a comma.
