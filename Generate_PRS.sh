@@ -80,9 +80,10 @@ fi
 
 if [ "$logistic" = "no" ];
 then 
-    printf "Because the -l flag was not supplied, the summary statistics are assumed to be linear regression results with the test statistic to be used assumed to be a BETA.\n"
+    printf "Because the -l flag was not supplied, the summary statistics are assumed to be linear regression results with the test statistic to be used assumed to be a BETA.\n" ;
 elif [ "$logistic" = "yes" ];
-    printf "Because the -l flag was supplied, the summary statistics will be treated as logistic regression with the test statistic to be used assumed to be OR.\n"
+then
+    printf "Because the -l flag was supplied, the summary statistics will be treated as logistic regression with the test statistic to be used assumed to be OR.\n" ;
 fi
 
 if [ "$memory_limit" ];
