@@ -37,6 +37,7 @@ window=250
 apoe_exclude=no
 genome_build=b38
 memory_limit=""
+logistic=no
 
 #parse arguments
 while getopts 'i:s:f:t:o:p:r:w:b:m:alh' flag; do
@@ -52,6 +53,7 @@ while getopts 'i:s:f:t:o:p:r:w:b:m:alh' flag; do
     b) genome_build="${OPTARG}" ;;
     m) memory_limit="${OPTARG}";;
     a) apoe_exclude=yes ;;
+    l) logistic=no ;;
     h) display_usage ; exit ;;
     \?|*) display_usage
        exit 1;;
@@ -74,6 +76,13 @@ Window size: $window
 if [ "$apoe_exclude" = "yes" ];
 then 
     printf "PRS will be calculated with and without the APOE region (using coordinates from genome build ${genome_build}).\n"
+fi
+
+if [ "$logistic" = "no" ];
+then 
+    printf "Because the -l flag was not supplied, the summary statistics are assumed to be linear regression results with the test statistic to be used assumed to be a BETA.\n"
+elif [ "$logistic" = "yes" ];
+    printf "Because the -l flag was supplied, the summary statistics will be treated as logistic regression with the test statistic to be used assumed to be OR.\n"
 fi
 
 if [ "$memory_limit" ];
@@ -110,11 +119,13 @@ current output tag: $output_tag_current\n"
 
     #check to make sure required columns are present
     if [[ $( head -n1 $sumstats_current | grep -o "SNP" ) ]] &&  [[ $( head -n1 $sumstats_current | grep -o "A1" ) ]] && [[ $( head -n1 $sumstats_current | grep -o "P" ) ]]; 
-    then 
-	if [[ $( head -n1 $sumstats_current | grep -o "BETA" ) ]] || [[ $( head -n1 $sumstats_current | grep -o "OR" ) ]];
-	then
+    then
+	if [ "$logistic" = "no" ] && [[ $( head -n1 $sumstats_current | grep -o "BETA" ) ]]; 
+	then 
 	    printf "All necessary columns are present in the summary stats.\n" ; 
-	else 
+	elif [ "$logistic" = "yes"] && [[ $( head -n1 $sumstats_current | grep -o "OR" ) ]];
+	    printf "All necessary columns are present in the summary stats.\n" ; 
+	else
 	    printf "One or more of the necessary columns (SNP, A1, BETA/OR, P) not present in the summary stats! Please confirm the columns are present and are named correctly and retry.\n"
         exit 1 ;
 	fi
