@@ -53,7 +53,7 @@ while getopts 'i:s:f:t:o:p:r:w:b:m:alh' flag; do
     b) genome_build="${OPTARG}" ;;
     m) memory_limit="${OPTARG}";;
     a) apoe_exclude=yes ;;
-    l) logistic=no ;;
+    l) logistic=yes ;;
     h) display_usage ; exit ;;
     \?|*) display_usage
        exit 1;;
@@ -135,7 +135,7 @@ current output tag: $output_tag_current\n"
     fi
 
     #get overlapping, non-palindromic variants
-    Rscript Determine_overlapping_SNPs.R $sumstats_current $genotypes ${output_folder}/$output_tag_current
+    Rscript Determine_overlapping_SNPs.R $sumstats_current $genotypes ${output_folder}/$output_tag_current $logistic
     #update summary stats variable to refer to the one updated for allele flips
     sumstats_current=${output_folder}/${output_tag_current}_summary_stats_updated.txt
 

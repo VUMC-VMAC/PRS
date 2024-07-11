@@ -2,6 +2,7 @@ args<-commandArgs(TRUE)
 sumstats <- args[1] #Path/Name to summary stats file
 genotypes <- args[2] #Path/Name of Genetic Data
 PRS_tag <- args[3] #outcome
+logistic <- args[4] # yes or no indicating whether test stat should be BETA or OR
 
 library(data.table)
 
@@ -10,7 +11,11 @@ setDTthreads(4)
 ## compare the summary stats to the input genotypes to get overlapping, non-palindromic variants
 
 # import already cleaned summary stats
-summary <- fread(sumstats, select = c("SNP", "A1", "A2", "BETA", "P"))
+if(logistic == "no"){
+     summary <- fread(sumstats, select = c("SNP", "A1", "A2", "BETA", "P"))
+} elif (logistic == "yes"){
+     summary <- fread(sumstats, select = c("SNP", "A1", "A2", "OR", "P"))
+}
 
 # import Cohort SNPs
 genetic <- fread(paste0(genotypes,".bim"), select = c(2,5,6))
