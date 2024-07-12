@@ -13,7 +13,7 @@ setDTthreads(4)
 # import already cleaned summary stats
 if(logistic == "no"){
      summary <- fread(sumstats, select = c("SNP", "A1", "A2", "BETA", "P"))
-} elif (logistic == "yes"){
+} else if (logistic == "yes"){
      summary <- fread(sumstats, select = c("SNP", "A1", "A2", "OR", "P"))
 }
 

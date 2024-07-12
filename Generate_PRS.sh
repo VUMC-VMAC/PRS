@@ -124,7 +124,8 @@ current output tag: $output_tag_current\n"
 	if [ "$logistic" = "no" ] && [[ $( head -n1 $sumstats_current | grep -o "BETA" ) ]]; 
 	then 
 	    printf "All necessary columns are present in the summary stats.\n" ; 
-	elif [ "$logistic" = "yes"] && [[ $( head -n1 $sumstats_current | grep -o "OR" ) ]];
+	elif [ "$logistic" = "yes" ] && [[ $( head -n1 $sumstats_current | grep -o "OR" ) ]];
+	then
 	    printf "All necessary columns are present in the summary stats.\n" ; 
 	else
 	    printf "One or more of the necessary columns (SNP, A1, BETA/OR, P) not present in the summary stats! Please confirm the columns are present and are named correctly and retry.\n"
